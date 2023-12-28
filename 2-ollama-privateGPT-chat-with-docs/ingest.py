@@ -8,6 +8,7 @@ from tqdm import tqdm
 from langchain.document_loaders import (
     CSVLoader,
     EverNoteLoader,
+    JSONLoader,
     PyMuPDFLoader,
     TextLoader,
     UnstructuredEmailLoader,
@@ -72,6 +73,7 @@ LOADER_MAPPING = {
     ".ppt": (UnstructuredPowerPointLoader, {}),
     ".pptx": (UnstructuredPowerPointLoader, {}),
     ".txt": (TextLoader, {"encoding": "utf8"}),
+    ".json": (JSONLoader, {"jq_schema": ".[]", "text_content": "False"}),
     # Add more mappings for other file extensions and loaders as needed
 }
 
@@ -79,11 +81,19 @@ LOADER_MAPPING = {
 def load_single_document(file_path: str) -> List[Document]:
     ext = "." + file_path.rsplit(".", 1)[-1]
     if ext in LOADER_MAPPING:
-        loader_class, loader_args = LOADER_MAPPING[ext]
-        loader = loader_class(file_path, **loader_args)
+        if ext == ".json":
+            loader = JSONLoader(
+                file_path=file_path,
+                jq_schema=".[]",
+                text_content=False
+            )
+        else:
+            loader_class, loader_args = LOADER_MAPPING[ext]
+            loader = loader_class(file_path, **loader_args)
         return loader.load()
 
     raise ValueError(f"Unsupported file extension '{ext}'")
+
 
 def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Document]:
     """
@@ -105,6 +115,7 @@ def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Docum
 
     return results
 
+
 def process_documents(ignored_files: List[str] = []) -> List[Document]:
     """
     Load documents and split in chunks
@@ -120,6 +131,7 @@ def process_documents(ignored_files: List[str] = []) -> List[Document]:
     print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
     return texts
 
+
 def does_vectorstore_exist(persist_directory: str) -> bool:
     """
     Checks if vectorstore exists
@@ -132,6 +144,7 @@ def does_vectorstore_exist(persist_directory: str) -> bool:
             if len(list_index_files) > 3:
                 return True
     return False
+
 
 def main():
     # Create embeddings
